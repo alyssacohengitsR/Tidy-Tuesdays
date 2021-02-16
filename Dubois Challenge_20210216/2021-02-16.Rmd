@@ -1,0 +1,51 @@
+---
+title: "2021-02-16"
+output: html_notebook
+---
+Completion of challenge 1 for tidy tuesday 2021-02-16
+Comparative Increase of White and Colored Population in Georgia
+
+# Libraries:
+```{r}
+library(tidytuesdayR)
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+```
+
+
+# Data:
+```{r}
+georgia_pop <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-02-16/georgia_pop.csv')
+```
+# Original Image
+![https://github.com/ajstarks/dubois-data-portraits/blob/master/challenge/challenge01/original-plate-07.jpg?raw=true](https://github.com/ajstarks/dubois-data-portraits/blob/master/challenge/challenge01/original-plate-07.jpg?raw=true)
+
+
+# My version
+```{r}
+georgia_pop %>% rename("African American" = Colored) %>%
+  pivot_longer(cols = c(2:3), 
+               names_to = "Race", 
+               values_to = "Population") %>% 
+  ggplot(aes(x=Year, y=Population, group=Race, color=Race)) + 
+  geom_line() + 
+  geom_point(size=0.7) +
+  theme_classic() +
+  theme(panel.grid.major.y = element_line(color = "grey", size = 0.2), 
+        legend.title = element_blank(), legend.position = "bottom", 
+        legend.margin = margin(1), axis.title.x = element_text(vjust=-0.5), 
+        plot.title.position = "plot", 
+        plot.title = element_text(face = "bold", hjust=0.5)) + 
+  scale_color_manual(values = c("African American" = "seagreen", 
+                                "White" = "cornflowerblue")) + 
+  scale_x_continuous(breaks = seq(from=0, to=1890, by=10)) +
+  labs(title="Comparative Increase in the African American and White \n Population of Gerogia", y="Percent") + 
+  ggsave("GerogiaPop_20210216.png")
+``` 
+
+
+# Citations:
+```{r}
+citation("tidytuesdayR")
+```
