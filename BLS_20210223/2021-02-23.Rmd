@@ -1,0 +1,117 @@
+---
+title: "2021-02-23"
+output: html_notebook
+---
+Class Tidy Tuesday #2
+
+# Libraries
+```{r}
+library(tidytuesdayR)
+library(forcats)
+library(tidyverse)
+library(ggplot2)
+```
+
+# Load Data
+```{r}
+BLSdata <- tidytuesdayR::tt_load('2021-02-23')
+
+employed <-BLSdata$employed
+earn <- BLSdata$earn
+```
+```{r}
+unique(earn$race)
+```
+
+
+# Edit data calculate difference in gender
+```{r}
+earn_wide <- 
+```
+
+# Calculate Means
+```{r}
+earn_means <- earn %>% relocate(year, quarter) %>% 
+  select(year, quarter, age, race, ethnic_origin, sex, n_persons) %>% 
+  mutate(sex = fct_recode(sex, "Both" = "Both Sexes"), 
+         race = recode(race, "Black or African American" = "African American")) %>%
+  pivot_wider(id_cols=c(1:5), 
+              names_from="sex", 
+              values_from="n_persons") %>%
+  mutate(gender_diff = Men-Women, 
+         percent_diff = gender_diff/Both * 100,
+         p_men=Men/ Both* 100,
+         p_women=Women/Both * 100) %>% 
+  select(c(1:12) & -c(6:9)) %>%
+  rename(Men = p_men, Women=p_women, Difference=percent_diff) %>%
+  pivot_longer(cols = c(6:8), 
+               names_to="sex", 
+               values_to="values") %>%
+  group_by(year, age, race, sex) %>% 
+  summarize(mean_N=mean(values))
+```
+
+# Plot
+```{r}
+earn_means %>% filter(age %in% c("16 to 24 years", "25 to 54 years", "55 years and over"), 
+                    sex != "Difference", race != "All Races") %>%
+  ggplot(aes(x=year, y=mean_N, group=sex, color=race)) +
+  geom_point(aes(shape=factor(sex)), size=1) +
+  facet_wrap(age~., nrow=3, ncol=1) +
+  theme_bw() +
+  theme(legend.position = "right", legend.text = element_text(size=7), 
+        legend.key.size = unit(12, "points"), legend.title = element_text(size=8), 
+        legend.margin = margin(0, 0, 0, 0), legend.box.just = "bottom", 
+        legend.box.margin = margin(0, 0, 0, 0),
+        legend.justification = "bottom", legend.spacing.y = unit(0, "lines"),
+        strip.background = element_rect(fill = "white", color = "white"),
+        strip.text.x = element_text(size=8, hjust=0), axis.text = element_text(size=6),
+        axis.title = element_text(size=9, vjust=1)) +
+  scale_x_continuous(breaks = seq(from=2010, to=2020, by=1)) +
+  scale_colour_discrete(labels = function(x) str_wrap(x, width = 7)) +
+  labs(y="Percent Persons", x="Year", color ="Race", shape="Sex")
+
+
+```
+
+# wage 
+```{r}
+wage_means <- earn %>% relocate(year, quarter) %>% 
+  select(year, quarter, age, race, ethnic_origin, sex, median_weekly_earn) %>%
+  mutate(sex = fct_recode(sex, "Both" = "Both Sexes"), 
+         race = recode(race, "Black or African American" = "African American")) %>%
+  pivot_wider(id_cols=c(1:5), 
+              names_from="sex", 
+              values_from="median_weekly_earn") %>%
+  mutate(Difference = Men-Women) %>%
+  select(-c(6)) %>%
+  pivot_longer(cols = c(6:8), 
+               names_to="sex", 
+               values_to="values") %>%
+  group_by(year, age, race, sex) %>% 
+  summarize(mean_Wage=mean(values))
+```
+
+# both
+```{r}
+earn_means <- inner_join(earn_means, wage_means)
+```
+
+## plot
+```{r}
+earn_means %>% filter(age %in% c("16 to 24 years", "25 to 54 years", "55 years and over"), 
+                    variables != "Difference", race != "All Races") %>%
+  ggplot(aes(x=year, y=mean_Wage, group=variables, color=race)) +
+  geom_point(aes(shape=factor(variables))) +
+  facet_wrap(age~., nrow=3, ncol=1, scales = "free") +
+  theme_bw() +
+  theme(legend.position = "right", legend.text = element_text(size=7),  
+        legend.key.size = unit(10, "points"), legend.title = element_text(size=9), 
+        legend.margin = margin(0), legend.box="vertical", legend.box.just = "left", 
+        strip.background = element_rect(fill = "white", color = "white"),
+        strip.text.x = element_text(size=8, hjust=0), axis.text = element_text(size=8),
+        axis.title.x = element_text(vjust=1)) +
+  scale_x_continuous(breaks = seq(from=2010, to=2020, by=1)) +
+  labs(y="Mean Weekly Wage", x="Year", color ="Race", shape="Sex")
+```
+

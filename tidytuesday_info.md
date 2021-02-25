@@ -1,3 +1,6 @@
+Tidy Tuesday link:
+[Tidy Tuesday](https://github.com/rfordatascience/tidytuesday)
+
 Tidy Tuesday Repos:
 [Emily Wilson](https://github.com/emwilson243/TidyTuesday)  
 [Emily Rukstales](https://github.com/erukstales/TidyTuesday)  
