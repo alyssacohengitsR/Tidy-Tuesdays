@@ -1,0 +1,54 @@
+---
+title: "Superbowl_2021_03_02"
+output: 
+  html_notebook:
+    theme: cosmo
+    highlight: tango
+---
+
+# Libraries
+```{r}
+library(tidyverse)
+library(here)
+```
+
+# Data
+```{r}
+tuesdata <- tidytuesdayR::tt_load('2021-03-02')
+youtube <- tuesdata$youtube
+```
+
+# compile usable data
+```{r}
+super <- youtube %>% select(c(12), c(1:2), c(5:11), c(15:22))  %>% filter(complete.cases(.))
+```
+
+# views
+```{r}
+views <- super %>% select(c(1:11)) %>%
+  pivot_longer(cols = c(4:10), 
+               names_to="Characteristic", 
+               values_to="Presence") %>%
+  filter(Presence == "TRUE")
+
+mean_views <- views %>% group_by(brand, Characteristic) %>%
+  summarize(view_count=mean(view_count))
+```
+
+##plot
+```{r}
+ggplot(views, aes(x=brand, y=view_count, group=brand)) +
+  geom_boxplot(fill="white", width=0.8, position="dodge") +
+  geom_jitter(aes(color=Characteristic), alpha=0.3, 
+              position = position_jitter(width=0.3, height=-0.4)) +
+  scale_y_continuous(trans = "log") + 
+  theme_classic() +
+  theme(legend.position = "bottom") + 
+  geom_jitter(data=mean_views, aes(color=Characteristic), alpha=1, shape=18, size=3, 
+              position = position_jitter(width=0.15, height=-0.7)) +
+  scale_color_manual(values = c("purple", "#E69F00", "red", "#009E73",
+          "#0072B2", "#D55E00", "#CC79A7")) +
+  labs(y="log view count") +
+  ggsave(here("Superbowl_20210302", "Views.png"))
+```
+

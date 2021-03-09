@@ -1,0 +1,103 @@
+---
+title: "Bechdel Test"
+output: html_notebook
+---
+
+#Libraries
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(viridis)
+library(here)
+```
+
+# Data
+```{r}
+raw_bechdel <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-09/raw_bechdel.csv')
+
+movies <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-09/movies.csv')
+```
+
+```{r}
+ggplot(movies, aes(x=budget, y=metascore, color=clean_test)) +
+  geom_point() +
+  theme()
+```
+
+
+```{r}
+movies_2 <- movies %>% select(imdb_id, title, budget, rated, metascore, awards, clean_test, binary) %>% inner_join(raw_bechdel)
+```
+
+
+```{r}
+movies_2 %>% filter(rated %in% c("G", "PG", "PG-13", "R")) %>% 
+  group_by(rated, clean_test) %>%
+  summarise(mean_score=mean(metascore, na.rm=TRUE)) %>%
+  ggplot(aes(x=rated, y=mean_score, color=clean_test)) + 
+    geom_point() +
+    theme_classic()
+
+movies_2 %>% filter(rated %in% c("G", "PG", "PG-13", "R")) %>% 
+  group_by(rated, clean_test) %>%
+  summarise(mean_score=mean(metascore, na.rm=TRUE)) %>%
+  ggplot(aes(x=rated, y=mean_score, fill=clean_test)) + 
+    geom_bar(position="dodge", stat="identity") +
+    theme_classic()
+```
+
+```{r}
+movies_2 %>% filter(rated %in% c("G", "PG", "PG-13", "R")) %>%
+  ggplot(aes(x=rating, y=metascore, color=binary)) +
+  geom_jitter(size=0.7) +
+  facet_wrap(rated~.) +
+  theme_bw() +
+  theme(strip.background = element_rect(fill = "white", color = "white"), 
+        strip.text = element_text(face="bold", size=12), 
+        panel.grid.major.x = element_blank(), 
+        legend.position = "none") +
+  labs(x="Bechdel Test Rating", y="Metascore Rating")
+```
+
+# play around with plots
+```{r}
+movies_2 %>% filter(rated %in% c("G", "PG", "PG-13", "R")) %>% 
+  ggplot(aes(x=rating, group=rated, fill=rated)) +
+  geom_density(adjust=1.5, alpha=.4) +
+  theme_classic()
+
+
+movies_2 %>% filter(rated %in% c("G", "PG", "PG-13", "R")) %>% 
+  ggplot(aes(x=year, group=rating, fill=rating)) +
+  geom_density(adjust=1.5, alpha=.4) +
+  facet_wrap(rated~.) +
+  theme_classic() +
+  theme(strip.background = element_rect(color = "white"), 
+        strip.text = element_text(face="bold", size=12)) +
+  scale_fill_viridis()
+
+movies_2 %>% filter(rated %in% c("G", "PG", "PG-13", "R")) %>% 
+  ggplot(aes(x=year, y=rating, color=rated)) +
+  geom_jitter(alpha=.7, size=1)
+```
+
+
+# Final Plot
+```{r}
+movies_2 %>% filter(rated %in% c("G", "PG", "PG-13", "R")) %>% 
+  ggplot(aes(x=year, y=rating, color=rating, group=year)) +
+  geom_jitter(alpha=.7, size=1) +
+  facet_wrap(rated~., scales='free') +
+  theme_bw() +
+  theme(strip.background = element_rect(fill = "white",color = "white"), 
+        strip.text = element_text(face="bold", size=12),
+        panel.grid.minor.y = element_blank(), panel.grid.major = element_blank(),
+        axis.title.y = element_blank(), axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank()) +
+  scale_color_viridis() +
+  labs(x="Year", color="Bechdel \nScore", title = "Bechdel Score of Movies from 1970-2013") +
+  ggsave(here("Bechdel_Test_20210309", "score_rating.png")) +
+  ggsave(here("Outputs", "score_rating.png"))
+```
+
+
