@@ -1,0 +1,128 @@
+---
+title: "Video Games and Slided"
+date: "2021-03-15"
+output: html_notebook
+---
+
+# Libraries
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(here)
+library(lubridate)
+
+install.packages("plotly")
+library(plotly)
+library(hrbrthemes)
+install.packages("egg")
+library(egg)
+```
+
+# Data
+```{r}
+games <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-16/games.csv')
+
+games <- games %>% 
+  unite(col = "Date", 
+      c(year,month), 
+      sep = "-",  
+      remove = FALSE) %>% 
+  mutate(covid = ifelse(year>2019, "Post", "Pre"))
+  
+games$avg_peak_perc <- gsub("%", "",games$avg_peak_perc)
+games$avg_peak_perc <- as.numeric(games$avg_peak_perc)
+
+games$Date <- parse_date_time(games$Date, "ym")
+
+library(stringr)
+games <- games %>% mutate(Series = NA)
+games$Series[str_detect(games$gamename, "Grand Theft Auto")] <- "Grand Theft Auto"
+games$Series[str_detect(games$gamename, "Call of Duty")] <- "Call of Duty"
+games$Series[str_detect(games$gamename, "Stardew Valley")] <- "Stardew Valley"
+games$Series[str_detect(games$gamename, "PLAYERUNKNOWN'S BATTLEGROUNDS")] <- "PLAYERUNKNOWN'S BATTLEGROUNDS"
+games$Series[str_detect(games$gamename, "Counter-Strike: Global Offensive")] <- "Counter-Strike: Global Offensive"
+games$Series[str_detect(games$gamename, "Dota 2")] <- "Dota 2"
+
+```
+
+```{r}
+games %>% group_by(year, month) %>% top_n(5, avg)
+games %>% group_by(year, month) %>% top_n(5)
+games %>% group_by(year, month) %>% top_n(5, gain)
+
+games %>% group_by(gamename) %>% 
+  summarise(mean_avg=mean(avg), 
+            mean_peak=mean(peak),
+            n=n()) %>%
+  top_n(5, mean_avg)
+
+games %>% group_by(gamename) %>% summarise(n=n()) %>%
+  top_n(5)
+```
+
+# Plot
+```{r}
+games_months <- games %>% group_by(Date, year, month, Series) %>% 
+  summarise(sum_avg=sum(avg), sum_peak=sum(peak),
+            mean_avg=mean(sum_avg), 
+            mean_peak=mean(sum_peak), 
+            mean_app=mean(avg_peak_perc),
+            n=n())
+
+games_months %>% filter(Series != "NA") %>% 
+  ggplot(aes(x=Date, y=sum_avg, color=Series)) +
+  geom_line(size=0.7) +
+  scale_colour_discrete(labels = function(x) str_wrap(x, width = 16)) + 
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") + 
+  ylim(1,1584886.8) +
+  scale_y_continuous(trans="sqrt",
+                     breaks = c(1500000, 1000000, 500000, 150000, 
+                                50000, 5000)) + 
+  geom_vline(xintercept = as.Date("2020-03-19"), linetype="dashed", 
+             size=0.4, color="grey24") + 
+  annotate(geom="text", x=as.Date("2019-06-01"), y=1450000, 
+           label="Covid Lockdown \nStarts", size=2.5) +
+  labs(y="Average Players at a Time", color="Game") +
+  theme_ipsum() +
+  theme(legend.position = "right", legend.text = element_text(size=7), 
+        legend.key.height = unit(1.3, "lines"), legend.key.size = unit(7, "pt"),
+        legend.box.margin = margin(0, -0.8, 0, 0, "cm"),
+        axis.text.y = element_text(size=8), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(color="black", size=0.5)) +
+  ggsave(here("Outputs", "videogames_sliced_2021.03.15.png")) +
+  ggsave(here("VideoGames_Sliced_20210315", "videogames_sliced_2021.03.15.png"))
+```
+
+## peak players at a time
+```{r}
+games_months %>% filter(Series != "NA") %>% 
+  ggplot(aes(x=Date, y=mean_peak, color=Series)) +
+  geom_line(size=0.7) +
+  theme_ipsum() +
+  theme(legend.position = "right", legend.text = element_text(size=8), 
+        legend.box.margin = margin(0, -0.8, 0, 0, "cm"),
+        legend.key.size = unit(1.3, "lines"),
+        ) + 
+  scale_colour_discrete(labels = function(x) str_wrap(x, width = 16)) + 
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(trans="sqrt")
+```
+
+
+## percent of average in maximum players at a time
+```{r} 
+games_months %>% filter(Series != "NA") %>% 
+  ggplot(aes(x=Date, y=mean_app, color=Series)) + 
+  geom_point(size=0.7, alpha=0.4) + 
+  geom_smooth(method="lm", se=FALSE, size=0.8) +
+  theme_ipsum() +
+  theme(legend.position = "right", legend.text = element_text(size=8), 
+        legend.box.margin = margin(0, -1, 0, 0, "cm"), legend.box.just = "bottom",
+        legend.key.size = unit(1.3, "lines"),
+        panel.grid.minor = element_blank()) +
+  scale_colour_discrete(labels = function(x) str_wrap(x, width = 16)) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(breaks = seq(0,100, 10))
+```
+
