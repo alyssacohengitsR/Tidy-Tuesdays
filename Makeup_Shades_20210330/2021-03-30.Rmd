@@ -1,0 +1,361 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Libraries
+
+```{r}
+library(tidyverse)
+library(htmlwidgets)
+library(plotly)
+library(forcats)
+library(lemon)
+```
+
+# Data
+
+```{r}
+sephora <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/sephora.csv')
+
+ulta <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/ulta.csv')
+
+allCategories <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/allCategories.csv')
+
+allShades <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/allShades.csv')
+
+allNumbers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-30/allNumbers.csv')
+
+```
+
+```{r}
+allNumbers$lightness_rev <- 1 - allNumbers$lightness
+```
+
+
+# plots
+
+facet wrap
+facet = light to dark
+x = brand  
+y = specific
+
+
+```{r}
+sortLvlsByVar.fnc <- function(oldFactor, sortingVariable, ascending = TRUE) {
+ 
+  require("dplyr")
+  require("magrittr")
+  
+  df <- data.frame(oldFactor, sortingVariable)
+ 
+  if (ascending == TRUE) {
+df_av <- df %>% group_by(oldFactor) %>% arrange(sortingVariable)
+  } 
+  
+  if(ascending == FALSE) {
+df_av <- df %>% group_by(oldFactor) %>% arrange(desc(sortingVariable))
+  } 
+  
+  newFactor <- factor(oldFactor, levels = df_av$oldFactor)
+  return(newFactor)
+  
+}
+
+```
+
+
+```{r}
+allNumbers$specific <- as.factor(allNumbers$specific)
+levels(allNumbers$specific)
+
+allNumbers %>% filter(brand =="TOM FORD") %>% 
+  group_by(specific) %>% arrange(numbers, desc(lightness))
+
+
+
+allNumbers %>% filter(brand =="TOM FORD") %>% 
+  group_by(specific) %>% arrange(numbers, lightness_rev)
+
+allNumbers %>% filter(brand =="TOM FORD") %>%
+  mutate(order = as.numeric(numbers + lightness_rev), 
+         specific = fct_reorder(specific, order))
+    
+allNumbers %>% filter(brand =="TOM FORD") %>% 
+  mutate(order = as.numeric(numbers + lightness_rev), 
+         specific = fct_reorder(specific, order)) %>%
+  ggplot(aes(x=as.character(id), y=specific, fill=hex)) +
+  geom_tile(aes(fill=hex)) +
+  facet_wrap(~brand) +
+  scale_fill_identity() +
+  theme_classic() +
+  theme(legend.position = "none")
+
+allNumbers %>% 
+  filter(brand %in% c("bareMinerals", "Urban Decay Cosmetics")) %>% 
+  ggplot(aes(y=as.character(id), x=as.factor(numbers))) +
+  geom_tile(aes(fill=hex), position="identity", stat="identity") + 
+  facet_rep_grid(brand~., scales="free", space="free") +
+  scale_fill_identity() +
+  theme_classic() +
+  theme(legend.position = "none")
+
+allNumbers %>% 
+  filter(brand %in% c("TOM FORD", "Urban Decay Cosmetics")) %>% 
+  ggplot(aes(x=as.factor(numbers))) +
+  geom_histogram(aes(fill=hex), stat="count") +
+  facet_wrap(brand~as.character(id), scales="free") +
+  scale_fill_identity() +
+  theme_classic() +
+  theme(legend.position = "none", axis.text.x = element_text(size = 4), 
+        strip.background = element_blank())
+
+strip.text.x = element_blank()
+
+test <- allNumbers %>% 
+  filter(brand %in% c("TOM FORD"))
+
+
+test$brand <- as.factor(test$brand)
+test$id <- as.factor(test$id)
+levels(test$id)
+
+ggplot(test, aes(y=1, x=as.factor(numbers))) +
+  geom_bar(aes(fill=hex), stat="identity") +
+  facet_grid(rows=vars(id), scales="free", switch = "y", space="free_y", shrink=) +
+  scale_fill_identity() +
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(size = 4))
+
+allNumbers %>% 
+  filter(brand %in% c("TOM FORD", "Urban Decay Cosmetics")) %>%
+  ggplot(aes(x=id, y=1, fill=hex)) +
+  geom_bar(position="fill", stat="identity", color="white") +
+  facet_grid(rows=vars(brand), scales="free", switch = "y", space="free_y", shrink=TRUE) +
+  scale_fill_identity() + 
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(size = 4))
+
+allNumbers %>% 
+  filter(brand %in% c("TOM FORD", "Urban Decay Cosmetics")) %>% 
+  ggplot(aes(x=as.factor(numbers))) +
+  geom_histogram(aes(fill=hex), stat="count") +
+  facet_wrap(brand~as.character(id), scales="free") +
+  scale_fill_identity() +
+  theme_classic() +
+  theme(legend.position = "none", axis.text.x = element_text(size = 4), 
+        strip.background = element_blank())
+
+allNumbers$id <- as.factor(allNumbers$id)
+```
+
+```{r}
+unique(allNumbers$brand)
+allNumbers %>% 
+  filter(lightToDark == "TRUE", 
+         brand %in% c("Bite Beauty", "TOM FORD", "Charlotte Tilbury", 
+                      "Benefit Cosmetics", "Laura Mercier", "Dior", 
+                      "FENTY BEAUTY by Rihanna", "Bobbi Brown")) %>% 
+  ggplot(aes(x=id, y=1, fill=hex)) +
+  geom_bar(position="fill", stat="identity", color="white") +
+  facet_grid(rows=vars(brand), scales="free", switch = "y", space="free_y", shrink=TRUE,
+             labeller = label_wrap_gen(multi_line = TRUE, width = 12)) +
+  scale_fill_identity() + 
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size = 4), 
+        strip.placement = "outside", 
+        strip.text.y.left = element_text(angle = 0, face = "bold"))
+```
+
+
+
+```{r}
+get_brand_colors <- function(brand_name) {
+  sorted %>%
+    filter(brand==brand_name)
+}
+
+plot_brands <- function(brand_data) {
+  title <- brand_data[[1,1]]
+  
+  ggplot(brand_data, aes(x=as.factor(numbers), fill=hex)) +
+    geom_histogram(binwidth=10, stat="count") + 
+    facet_wrap(.~product, scales="free", 
+               labeller = label_wrap_gen(multi_line = TRUE)) +
+    scale_fill_identity() +
+    scale_y_continuous(expand = c(0,0)) +
+    labs(subtitle = title) +
+    theme_void() +
+    theme(legend.position = "none", 
+          axis.title = element_blank(), 
+          axis.text = element_blank(),
+          axis.line = element_blank(), 
+          strip.text = element_blank(),
+          panel.spacing = unit(0.2, "lines"), 
+          panel.spacing.x = unit(0.4, "lines"), 
+          plot.margin = unit(c(0.2,0.2,0.2,0.2),"lines"))
+
+}
+```
+
+,
+strip.text = element_text(size=8, color="gray70", hjust=0)
+```{r}
+light_dark <- allNumbers %>% 
+  filter(lightToDark == "TRUE") %>% 
+  count(brand, sort=TRUE) %>%
+  slice(1:57)
+  .$brand
+
+dark_light <- allNumbers %>% 
+  filter(lightToDark == "FALSE") %>% 
+  count(brand,sort=TRUE) %>%
+  slice(1:4) %>%
+  .$brand
+
+sorted <- allNumbers %>% filter(lightToDark %in% c("TRUE", "FALSE")) %>%
+  group_by(brand) %>%
+  arrange(brand, id, numbers, lightness_rev)
+```
+
+
+```{r}
+LD_plots <- lapply(light_dark, function(x) {
+  x %>% 
+     get_brand_colors() %>% 
+     plot_brands()
+  })
+
+DL_plots <- lapply(dark_light, function(x) {
+  x %>% 
+     get_brand_colors() %>% 
+     plot_brands()
+  })
+```
+
+```{r}
+library(patchwork)
+```
+
+
+```{r}
+(LD_plots[[1]] + LD_plots[[2]]) /
+(LD_plots[[3]] + LD_plots[[5]]) /
+(LD_plots[[4]] + LD_plots[[6]] + LD_plots[[7]]) 
+
+LD_plots[[1]]
+LD_plots[[10]]
+
+LD_plots[[5]]
+
+LD_plots[[2]]
+```
+
+
+
+```{r}
+pheatmap(test, cluster_cols = F, cluster_rows = F, annotation_row = mydf)
+```
+
+
+```{r}
+install.packages("treemap")
+library(treemap)
+
+allNumbers %>% 
+  filter(brand %in% c("bareMinerals", "Urban Decay Cosmetics"), 
+         product %in% c("BAREPRO Performance Wear Powder Foundation", "All Nighter Liquid Full Coverage Foundation")) %>% 
+  treemap(index=c("brand","id", "numbers"), 
+          vSize="numbers", 
+          vColor="hex",
+          type = "color")
+```
+
+
+
+```{r}
+allNumbers %>% filter(lightToDark == "TRUE") %>%
+  mutate(order = as.numeric(numbers + lightness_rev), 
+         specific = fct_reorder(specific, order)) %>%
+  ggplot(aes(y=as.character(id), x=specific, fill=hex)) +
+  geom_tile() + 
+  facet_rep_grid(brand~., scales = "free") +
+  scale_fill_manual(values=c(allNumbers$hex)) +
+  theme_classic() +
+  theme(legend.position = "none")
+```
+
+
+#final plots
+light to dark companies
+```{r}
+LD_plot <- allNumbers %>% 
+   filter(lightToDark == "TRUE", 
+          brand %in% c("Bite Beauty", "TOM FORD", "Charlotte Tilbury", 
+                       "Benefit Cosmetics", "Laura Mercier", "Dior", 
+                       "FENTY BEAUTY by Rihanna", "Bobbi Brown"),
+          id != "56") %>% 
+   mutate(brand = fct_recode(brand, 
+                             "FENTY"="FENTY BEAUTY by Rihanna")) %>%
+   ggplot(aes(x=id, y=1, fill=hex)) +
+   geom_bar(position="fill", stat="identity", color="white") +
+   facet_grid(rows=vars(brand), scales="free", switch = "y", space="free_y", shrink=TRUE,
+              labeller = label_wrap_gen(multi_line = TRUE, width = 12)) +
+   scale_fill_identity() + 
+   coord_flip() +
+   theme_void() +
+   theme(legend.position = "none", 
+         axis.text.x = element_blank(), axis.title.x = element_blank(),
+         axis.text.y.left = element_blank(),
+         strip.placement = "outside", 
+         strip.text.y.left = element_text(size=8, face = "bold", 
+                                          angle = 0,  
+                                          margin = margin(2, 0, 2, 5, unit = "pt")),
+         strip.switch.pad.grid = unit(-1.2, "lines"))
+
+LD_plot
+```
+
+dark to light companies
+```{r}
+DL_plot <- allNumbers %>% 
+   filter(lightToDark == "FALSE") %>%
+   ggplot(aes(x=id, y=1, fill=hex)) +
+   geom_bar(position="fill", stat="identity", color="white") +
+   facet_grid(rows=vars(brand), scales="free", switch = "y", space="free_y", shrink=TRUE,
+              labeller = label_wrap_gen(multi_line = TRUE, width = 12)) +
+   scale_fill_identity() + 
+   scale_y_reverse() +
+   coord_flip() +
+   theme_void() +
+   theme(legend.position = "none", 
+         axis.title.x = element_blank(),
+         axis.text.y.left = element_blank(),
+         strip.placement = "outside", 
+         strip.text.y.left = element_text(size=8, face = "bold", 
+                                          angle = 0,  
+                                          margin = margin(2, 0, 2, 5, unit = "pt")),
+         strip.switch.pad.grid = unit(-1.2, "lines"))
+ DL_plot
+```
+
+
+```{r}
+p1 <- LD_plot + ggtitle("Light Shades Fist") + theme(plot.title = element_text(hjust=0.5))
+p2 <- DL_plot + ggtitle("Dark Shades Fist") + theme(plot.title = element_text(hjust=0.5))
+
+plot <- p1 + p2
+plot
+plot + ggsave(here("Makeup_Shades_20210330", "makeup_shaes.png")) +
+  ggsave(here("Outputs", "makeup_shaes_20210330.png"))
+```
+
+
+
+
+
+
