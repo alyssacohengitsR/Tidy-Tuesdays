@@ -1,0 +1,112 @@
+---
+title: "Netflix Shows"
+output: html_notebook
+---
+
+# Libraries
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggridges)
+library(colorRamps)
+library(here)
+```
+
+
+# Data
+```{r}
+netflix_titles <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-04-20/netflix_titles.csv')
+
+head(netflix_titles)
+```
+
+```{r}
+tibble(
+  x = 1:3,
+  y = c("a", "d,e,f", "g,h")) %>%
+ 
+```
+
+## extract data i need
+```{r}
+actors <- netflix_titles %>% 
+  filter(str_detect(netflix_titles$country, "United States") == TRUE) %>%
+  select(show_id, title, cast) %>% 
+  transform(cast = strsplit(cast, ",")) %>%
+  unnest(cast) 
+
+actors$cast <- str_trim(actors$cast)
+
+head(actors)
+```
+
+## get data with only top actors
+```{r}
+top_actors <- actors %>% filter(complete.cases(.)) %>%
+  group_by(cast) %>%
+  summarise(N=n()) %>%
+  top_n(10) %>%
+  arrange(desc(N)) 
+  
+top_actors <- semi_join(actors, top_actors) 
+  group_by(cast) %>%
+  summarise(N=n())
+
+netflix <- netflix_titles %>% 
+  transform(cast = strsplit(cast, ",")) %>%
+  unnest(cast) 
+netflix$cast <- str_trim(netflix$cast)
+
+netflix <- semi_join(netflix, top_actors)
+  
+unique(netflix$rating)
+
+netflix$rating <- factor(netflix$rating, 
+                         levels = c("TV-Y", "TV-Y7", "TV-Y7-FV", "TV-G", "G", 
+                                    "TV-PG", "PG", "PG-13", 
+                                    "TV-14", "TV-MA", "R", "UR"))
+netflix <- netflix %>% 
+  mutate(rated = fct_recode(rating,
+                            "1" = "TV-Y", 
+                            "2" = "TV-Y7", 
+                            "3" = "TV-Y7-FV", 
+                            "4" = "TV-G", "4" = "G", 
+                            "5" = "TV-PG", "5" = "PG", 
+                            "6" = "PG-13", 
+                            "7" = "TV-14", 
+                            "8" = "TV-MA", 
+                            "9" = "R", 
+                            "10" = "UR"), 
+         rated = as.numeric(rated))
+```
+
+
+
+# plot
+```{r}
+netflix %>% select(cast, type, show_id, rated) %>% 
+  mutate(cast = as.factor(cast),
+         cast = fct_relevel(cast, "Tara Strong", "Adam Sandler", 
+                            "Fred Tatasciore", "James Franco",
+                            "Nicolas Cage", "Samuel L. Jackson",
+                            "Antonio Banderas", "Erin Fitzgerald",
+                            "Fred Armisen","Kate Higgins")) %>%
+  ggplot(aes(x=rated, y=cast, fill= stat(x))) +
+  geom_density_ridges_gradient(alpha=0.5) +
+  scale_x_continuous(expand = c(0, 0)) + 
+  scale_y_discrete(limits= rev) +
+  scale_fill_gradientn(colors = matlab.like2(10),
+                       breaks = c(0, 2, 5, 7.5, 10), 
+                       labels = c("Children", "7+", "PG",
+                                "MA", "Unrated")) +
+  labs(fill="Rating", 
+       title = "Top Actors on Netflix: TV & Movie Ratings") +
+  theme_classic() +
+  theme(plot.title.position = "plot", 
+        legend.justification = "top", 
+        axis.title = element_blank(), 
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        axis.text.y = element_text(color = "black")) +
+  ggsave(here("Netflix_Shows_20210420", "Netflix_Actors_Ratings_20210420.png"))
+```
+
