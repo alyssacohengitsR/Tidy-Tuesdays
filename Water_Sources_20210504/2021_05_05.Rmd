@@ -1,0 +1,176 @@
+---
+title: "Water Sources"
+output: html_notebook
+---
+
+# Libraries
+```{r}
+library(tidyverse)
+library(here)
+```
+
+
+```{r}
+library(rgdal)
+library(ggsn)
+```
+
+# Data
+```{r}
+water_source <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-05-04/water.csv')
+```
+
+```{r}
+water <- water_source %>% 
+  rename(long = lon_deg, lat = lat_deg) %>%
+  filter(water_source != "NA") 
+```
+
+
+# map 
+register google
+```{r}
+register_google(key = "AIzaSyCTLtIVH1tWKFwskcADuO7hlzjZ9wiSVjY")
+```
+
+map data
+```{r}
+world <- map_data("world")
+
+africa <- get_map("africa")
+```
+
+
+```{r}
+unique(water$water_source)
+
+water <- water %>% 
+  mutate(source = water_source,
+         source = recode(water_source, 
+                         "Surface Water (River/Stream/Lake/Pond/Dam)" = "Surface Water",
+                         "Protected Spring" = "Protected",
+                         "Protected Shallow Well" = "Protected", 
+                         "Unprotected Spring" = "Unprotected", 
+                         "Unprotected Shallow Well"  = "Unprotected",
+                         "Undefined Shallow Well" = "Undefined",
+                         "Undefined Spring" = "Undefined", 
+                         "Delivered Water" = "Delivered/Packaged Water", 
+                         "Packaged water" = "Delivered/Packaged Water")) 
+
+unique(water$source)
+```
+
+## basic
+```{r}
+library(tidyverse)
+library(here)
+library(maps)
+library(mapdata)
+library(mapproj)
+library(ggmap)
+```
+
+```{r}
+world <- map_data("world")
+
+AF <- subset(world, region %in% c("Algeria","Angola","Benin","Botswana",
+                                  "Burkina Faso","Burundi","Cabo Verde","Cameroon",
+                                  "Central African Republic","Chad","Comoros",
+                                  "Democratic Republic of the Congo",
+                                  "Republic of Congo","Ivory Coast",
+                                  "Djibouti","Egypt", "Equatorial Guinea",
+                                  "Eritrea","Swaziland","Ethiopia",
+                                  "Gabon","Gambia","Ghana","Guinea",
+                                  "Guinea-Bissau","Kenya","Lesotho","Liberia",
+                                  "Libya","Madagascar","Malawi","Mali",
+                                  "Mauritania","Mauritius","Morocco",
+                                  "Mozambique","Namibia","Niger","Nigeria","Rwanda",
+                                  "Sao Tome and Principe","Senegal","Seychelles",
+                                  "Sierra Leone","Somalia","South Africa","South Sudan",
+                                  "Sudan","Tanzania","Togo","Tunisia",
+                                  "Uganda","Zambia","Zimbabwe"))
+```
+
+```{r}
+ggplot() +
+  geom_polygon(data =AF, aes(x = long, y = lat, group = group),
+               fill = "white", color="black") +
+  geom_point(data = water, 
+             aes(x = long, y = lat, color = source),
+             shape=20, alpha=0.7) +
+  coord_map() +
+  xlim(-25,50) +
+  ylim(-38,38) +
+  theme_void() +
+  theme(legend.position = "right", legend.justification = "top", 
+        legend.text = element_text(size=7),
+        legend.box.margin = margin(1,-2,0,1, unit = 'lines')) +
+  labs(color="Source") +
+  guides(color = guide_legend(override.aes = list(size = 2, alpha = 1)))
+```
+
+
+
+## sf
+
+this is the plot I submitted
+```{r}
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(ggspatial)
+library(rgeos)
+```
+
+
+```{r}
+africa <- ne_countries(scale = "medium", returnclass = "sf", continent = "Africa")
+```
+
+```{r}
+ggplot() + 
+  geom_sf(data = africa, fill="white") +
+  geom_point(data = water, # add a point at all my sites
+             aes(x = long, y = lat, color = source), 
+             shape=20, alpha=0.4, size=1) +
+  xlim(-25,50) +
+  ylim(-38,38) +
+  theme_void() +
+  theme(legend.position = "right", legend.justification = "top", 
+        legend.text = element_text(size=7),
+        legend.box.margin = margin(1,-1,0,1, unit = 'lines')) +
+  labs(color="Source", title = "Africa's Water Sources") +
+  guides(color = guide_legend(override.aes = list(size = 3, alpha = 1))) 
+  ggsave(here("Outputs", "water_source_2021.05.04.png"))
+
+```
+
+## plot_ly
+```{r}
+library(plotly)
+library(htmlwidgets)
+```
+
+```{r}
+head(water)
+```
+
+### plot
+```{r}
+p <- plot_geo(water, lat = ~lat, lon = ~long) %>% 
+  layout(geo = list(scope = "africa", 
+                    showcountries=TRUE),
+         title = "Africa's Water Sources") %>%
+  add_markers(color= ~source, colors = "Set3", opacity = 0.6,
+              text = ~paste(country_name, water_source,
+                            paste("Facility:", facility_type), paste("Payment:",pay),
+                            paste("Installed:",install_year), paste("Reported:", report_date),
+                            sep = "<br />"),
+              hoverinfo = "text") 
+```
+
+### save
+```{r}
+saveWidget(p, here("Outputs/Africa_water_sources.html"))
+```
+
